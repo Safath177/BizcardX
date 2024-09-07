@@ -1,5 +1,4 @@
 import streamlit as st
-from streamlit_option_menu import option_menu
 import easyocr
 from PIL import Image
 import pandas as pd
@@ -7,6 +6,32 @@ import numpy as np
 import re
 import io
 import sqlite3
+import warnings
+warnings.filterwarnings("ignore")
+
+# Create the database connection
+mydb = sqlite3.connect("Bizcard.db")
+cursor = mydb.cursor()
+
+# Check if the table exists, and create it if it doesn't
+try:
+    create_table_query = '''CREATE TABLE IF NOT EXISTS Bizcard_Details (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            NAME VARCHAR (225),
+                            DESIGNATION VARCHAR (225),
+                            COMPANY_NAME VARCHAR (225),
+                            CONTACT VARCHAR (225),
+                            EMAIL VARCHAR (225),
+                            WEBSITE text,
+                            ADDRESS text,
+                            PINCODE VARCHAR (225),
+                            IMAGE text
+                            )'''
+    cursor.execute(create_table_query)
+    mydb.commit()
+except sqlite3.Error as e:
+    st.error(f"Error creating the table: {e}")
+
 
 def image_to_text(path):
 
@@ -69,10 +94,9 @@ def extracted_text(texts):
 st.set_page_config(layout = "wide")
 st.title ("EXTRACTING BUSINESS CARD DATA WITH OCR")
 
-with st.sidebar:
-  select = option_menu("Main Menu",["Home", "Upload and Modify", "Delete"])
+tab1, tab2, tab3 = st.tabs(["Home","Upload and Modify","Delete"])
 
-if select == "Home":
+with tab1:
 
   st.markdown("### :blue[**Technologies Used :**] Python,easy OCR, Streamlit, SQL, Pandas")
   st.write(
@@ -80,7 +104,7 @@ if select == "Home":
   st.write(
             '### The main purpose of Bizcard is to automate the process of extracting key details from business card images, such as the name, designation, company, contact information, and other relevant data. By leveraging the power of OCR (Optical Character Recognition) provided by EasyOCR, Bizcard is able to extract text from the images.')
 
-elif select == "Upload and Modify":
+with tab2:
     img = st.file_uploader("Upload the Image",type = ["png","jpg","jpeg"])
 
     if img is not None:
@@ -111,38 +135,32 @@ elif select == "Upload and Modify":
       concat_df = pd.concat([df,df1],axis = 1)
 
       st.dataframe(concat_df)
+# checking for duplicate data
+      select_query = "SELECT EMAIL FROM Bizcard_Details"
+      cursor.execute(select_query)
+      existing_emails = [email[0] for email in cursor.fetchall()]
 
-      button_1 = st.button("Save",use_container_width=True)
-      if button_1:
-        mydb = sqlite3.connect("Bizcard.db")
-        cursor = mydb.cursor()
+  # insert query
 
-        #table creation
+    insert_query = ''' INSERT OR REPLACE INTO Bizcard_Details (NAME,DESIGNATION,COMPANY_NAME,CONTACT,EMAIL,WEBSITE,ADDRESS,
+                                                  PINCODE,IMAGE)
+                                                  values(?,?,?,?,?,?,?,?,?)'''
 
-        create_table_query = '''CREATE TABLE IF NOT EXISTS Bizcard_Details(NAME VARCHAR (225),
-                                                                          DESIGNATION VARCHAR (225),
-                                                                          COMPANY_NAME VARCHAR (225),
-                                                                          CONTACT VARCHAR (225),
-                                                                          EMAIL VARCHAR (225),
-                                                                          WEBSITE text,
-                                                                          ADDRESS text,
-                                                                          PINCODE VARCHAR (225),
-                                                                          IMAGE text )'''
-        cursor.execute(create_table_query)
-        mydb.commit()
 
-        # insert query
+    datas = concat_df.values.tolist()[0]
 
-        insert_query = ''' INSERT INTO Bizcard_Details(NAME,DESIGNATION,COMPANY_NAME,CONTACT,EMAIL,WEBSITE,ADDRESS,
-                                                      PINCODE,IMAGE)
-
-                                                      values(?,?,?,?,?,?,?,?,?)'''
-
-        datas = concat_df.values.tolist()[0]
-        cursor.execute(insert_query,datas)
-        mydb.commit()
-
-        st.success("Saved Successfully")
+    button_1 = st.button("Save", use_container_width=True)
+    if button_1:
+            email = datas[4]
+            if email in existing_emails:
+                st.warning("The data already exists in the database.")
+            else:
+                try:
+                    cursor.execute(insert_query, datas)
+                    mydb.commit()
+                    st.success("Saved Successfully")
+                except sqlite3.Error as e:
+                    st.error(f"Error saving the data: {e}")
 
 
     method = st.radio("Select the method",["None","Preview","Modify"])
@@ -243,7 +261,7 @@ elif select == "Upload and Modify":
 
         st.success("Modified Successfully")
 
-elif select == "Delete":
+with tab3:
   mydb = sqlite3.connect("Bizcard.db")
   cursor = mydb.cursor()
 
@@ -300,3 +318,9 @@ elif select == "Delete":
         mydb.commit()
 
         st.warning("DELETED")
+
+
+
+
+
+
