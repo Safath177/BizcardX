@@ -27,22 +27,25 @@ BizCard Extractor is a robust and user-friendly web application designed to extr
 - **SQLite**: For storing and managing extracted data.
 
 
-Application Workflow
+## Application Workflow
 The application consists of three primary tabs:
 
-Home:
+### Home:
 
 Learn about the app's features and technologies.
 
-Upload and Modify:
+### Upload and Modify:
 
 Upload business card images and extract textual data.
 
 Save, preview, or modify the extracted data.
 
-Delete:
+### Delete:
 
 Delete specific entries from the database based on provided filters.
+
+## Contact:
+If you have any questions or suggestions, feel free to contact me at alisafath@gmail.com
 
 
 
